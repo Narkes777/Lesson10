@@ -1,10 +1,13 @@
+from pickletools import read_uint1
+from urllib import request
+from webbrowser import get
 from django.shortcuts import render
-from .models import Post, Category
-from .forms import PostForm
+from .models import Post, Category, Author
+from .forms import PostForm, AuthorForm
 from django.http import HttpResponse, HttpRequest, HttpResponseNotFound
 from django.template.loader import get_template
 
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, render, redirect
 
 # Create your views here.
 
@@ -20,7 +23,7 @@ def post_get_form(request: HttpRequest) -> HttpResponse:
             return HttpResponse('Invalid data')
     else:
         form = PostForm()
-        context = {'form': form}
+        context = {'form': form, "model_name": "Post"}
         return render(request, 'form.html', context)
 
 
@@ -78,3 +81,46 @@ def category_detail(request: HttpRequest, pk: int) -> HttpResponse:
     # except Post.DoesNotExist:
     #     return HttpResponseNotFound(f'Объект с ключем {pk} не был найден')
 
+def author_list(request: HttpRequest) -> HttpResponse:
+    authors = Author.objects.all()
+    context = {'author_list': authors}
+    return render(request, 'author_list.html', context=context)
+
+def author_detail(request: HttpRequest, pk: int) -> HttpResponse:
+    author = get_object_or_404(Author, pk=pk)
+    context = {'author': author}
+    return render(request, 'author_detail.html', context=context)
+
+def author_create(request: HttpRequest) -> HttpResponse:
+      if request.method == 'POST':
+        data = request.POST
+        form = AuthorForm(data)
+        if form.is_valid():
+            form.save()
+            return HttpResponse('New author has been saved', status=201)
+        else:
+            return HttpResponse('Error when saving new author', status=400)
+      else:
+        form = AuthorForm()
+        return render(request, 'form.html', {'form':form, "model_name": "Author"})
+
+def author_update(request: HttpRequest, pk: int) -> HttpResponse:
+    author = get_object_or_404(Author, pk=pk)
+    if request.method == 'POST':
+        data = request.POST 
+        form = AuthorForm(data, instance=author)
+        if form.is_valid():
+            form.save()
+            return redirect('author_detail', pk=author.pk)
+        else:
+            return HttpResponse('Error when saving new author', status=400)
+    else:
+        form = AuthorForm(instance=author)
+        return render(request, 'form.html', {'form': form, "model_name": "Author"})
+
+def author_delete(request: HttpRequest, pk: int) -> HttpResponse:
+    author = get_object_or_404(Author, pk=pk)
+    if request.method == "POST":
+        author.delete()
+        return HttpResponse(f"Author with pk {author.pk} has been deleted")
+    return render(request, "form.html", {"model_name": "Author"})
